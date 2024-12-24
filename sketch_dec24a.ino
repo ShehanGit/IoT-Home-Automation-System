@@ -8,5 +8,5 @@ void setup() {
 void loop() {
     handleWebServer();
     handleSerialCommands();
-    cycleColors();
+    handleColorCycle();  // Changed from cycleColors to handleColorCycle
 }

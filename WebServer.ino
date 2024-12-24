@@ -29,5 +29,6 @@ void handleSetColor() {
 void handleToggleRelax() {
     String enabled = server.arg("enabled");
     bool isEnabled = (enabled == "true");
+    setRelaxMode(isEnabled);
     server.send(200, "text/plain", "OK");
 }
