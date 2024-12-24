@@ -11,7 +11,7 @@ def find_esp32_port():
             return port.device
     return None
 
-def get_average_screen_color(monitor_number=1):
+def get_average_screen_color(monitor_number=2):
     with mss.mss() as sct:
         monitor = sct.monitors[monitor_number]
         screenshot = sct.grab(monitor)
@@ -20,45 +20,76 @@ def get_average_screen_color(monitor_number=1):
         return avg_color[:3]
 
 def enhance_color(value):
-    # Reduce overall brightness and increase contrast
-    gamma = 2.2  # Higher gamma for more contrast
-    brightness_factor = 0.6  # Reduced brightness
-    min_value = 10  # Lower minimum value
+    gamma = 1.6        # Lower gamma for more punchy colors
+    saturation = 1.4   # Higher saturation
+    min_value = 5      # Minimum brightness threshold
     
-    # Apply minimum brightness
     value = max(value, min_value)
-    
-    # Apply gamma correction and brightness
     normalized = value / 255.0
-    corrected = pow(normalized, 1/gamma) * brightness_factor
+    corrected = pow(normalized, 1/gamma) * saturation
     
     return min(255, max(0, int(corrected * 255)))
 
 def enhance_colors(r, g, b):
-    # Enhance individual colors
+    # Initial color enhancement
     r = enhance_color(r)
     g = enhance_color(g)
     b = enhance_color(b)
     
     # Find dominant color
     max_val = max(r, g, b)
-    if max_val > 0:
-        # Reduce non-dominant colors more aggressively
-        if r < max_val: r = int(r * 0.6)
-        if g < max_val: g = int(g * 0.6)
-        if b < max_val: b = int(b * 0.6)
-        
-        # Boost dominant color slightly
-        if r == max_val: r = min(255, int(r * 1.1))
-        if g == max_val: g = min(255, int(g * 1.1))
-        if b == max_val: b = min(255, int(b * 1.1))
     
-    # Prevent white output by ensuring at least one color is significantly lower
-    if min(r, g, b) > 100:
-        min_color = min(r, g, b)
-        if min_color == r: r = int(r * 0.5)
-        if min_color == g: g = int(g * 0.5)
-        if min_color == b: b = int(b * 0.5)
+    if max_val > 20:  # Only process if there's significant color
+        # Boost dominant color more aggressively
+        boost_factor = 1.5
+        reduction_factor = 0.5
+        
+        # Boost dominant and reduce others
+        if r == max_val:
+            r = min(255, int(r * boost_factor))
+            g = int(g * reduction_factor)
+            b = int(b * reduction_factor)
+        elif g == max_val:
+            g = min(255, int(g * boost_factor))
+            r = int(r * reduction_factor)
+            b = int(b * reduction_factor)
+        elif b == max_val:
+            b = min(255, int(b * boost_factor))
+            r = int(r * reduction_factor)
+            g = int(g * reduction_factor)
+        
+        # Handle mixed colors (when two colors are close)
+        if abs(r - g) < 30 and r > 100 and g > 100:  # Yellow
+            r = min(255, int(r * 1.2))
+            g = min(255, int(g * 1.2))
+            b = int(b * 0.3)
+        elif abs(r - b) < 30 and r > 100 and b > 100:  # Magenta
+            r = min(255, int(r * 1.2))
+            b = min(255, int(b * 1.2))
+            g = int(g * 0.3)
+        elif abs(g - b) < 30 and g > 100 and b > 100:  # Cyan
+            g = min(255, int(g * 1.2))
+            b = min(255, int(b * 1.2))
+            r = int(r * 0.3)
+    
+    # Prevent white output
+    if r > 180 and g > 180 and b > 180:
+        max_color = max(r, g, b)
+        if max_color == r:
+            g = int(g * 0.6)
+            b = int(b * 0.6)
+        elif max_color == g:
+            r = int(r * 0.6)
+            b = int(b * 0.6)
+        else:
+            r = int(r * 0.6)
+            g = int(g * 0.6)
+    
+    # Final brightness boost for vibrant colors
+    final_boost = 1.3
+    r = min(255, int(r * final_boost))
+    g = min(255, int(g * final_boost))
+    b = min(255, int(b * final_boost))
     
     return r, g, b
 
@@ -78,15 +109,16 @@ def main():
         time.sleep(2)
         print("Starting color sync. Press Ctrl+C to stop.")
         
-        # Test with pure colors first
+        # Test sequence with vibrant colors
         test_colors = [
-            (255, 0, 0),    # Red
-            (0, 255, 0),    # Green
-            (0, 0, 255),    # Blue
+            (255, 0, 0),    # Pure Red
+            (0, 255, 0),    # Pure Green
+            (0, 0, 255),    # Pure Blue
             (255, 255, 0),  # Yellow
             (255, 0, 255),  # Magenta
             (0, 255, 255),  # Cyan
-            (255, 255, 255) # White
+            (255, 128, 0),  # Orange
+            (128, 0, 255)   # Purple
         ]
         
         print("\nRunning color test sequence...")
@@ -94,11 +126,11 @@ def main():
             command = f"RGB:{r},{g},{b}\n"
             print(f"Testing color: {command.strip()}")
             ser.write(command.encode())
-            time.sleep(0.5)
+            time.sleep(1)
         
         # Color smoothing variables
         last_r, last_g, last_b = 0, 0, 0
-        smoothing = 0.8  # Higher smoothing for more stable colors
+        smoothing = 0.3  # Fast response time
         
         while True:
             try:
@@ -106,9 +138,9 @@ def main():
                 r, g, b = enhance_colors(r, g, b)
                 
                 # Smooth color transitions
-                r = int(r * smoothing + last_r * (1 - smoothing))
-                g = int(g * smoothing + last_g * (1 - smoothing))
-                b = int(b * smoothing + last_b * (1 - smoothing))
+                r = int(r * (1 - smoothing) + last_r * smoothing)
+                g = int(g * (1 - smoothing) + last_g * smoothing)
+                b = int(b * (1 - smoothing) + last_b * smoothing)
                 
                 last_r, last_g, last_b = r, g, b
                 
@@ -116,7 +148,7 @@ def main():
                 ser.write(command.encode())
                 
                 print(f"\rCurrent RGB: ({r}, {g}, {b})", end="")
-                time.sleep(0.05)
+                time.sleep(0.016)  # ~60fps update rate
                 
             except Exception as e:
                 print(f"\nError during color processing: {e}")
