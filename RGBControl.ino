@@ -24,6 +24,11 @@ void setRGBColor(int r, int g, int b) {
     g = constrain(g, 0, 255);
     b = constrain(b, 0, 255);
     
+    // Invert values for common anode LED
+    r = 255 - r;
+    g = 255 - g;
+    b = 255 - b;
+    
     // Write analog values to pins
     analogWrite(RGB_RED_PIN, r);
     analogWrite(RGB_GREEN_PIN, g);
