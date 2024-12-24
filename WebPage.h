@@ -8,6 +8,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <title>ESP32 Control Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+       /* Previous styles remain the same */
        body {
     font-family: Arial;
     text-align: center;
@@ -51,6 +52,10 @@ const char index_html[] PROGMEM = R"rawliteral(
     <script>
 let relaxationMode = false;
 let relaxationInterval;
+let currentHue = 0;
+let lastColor = { r: 0, g: 0, b: 0 };
+const TRANSITION_STEPS = 30;  // Number of steps for smooth transition
+const CYCLE_SPEED = 100;     // Time between color updates in milliseconds
 
 function setColor(r, g, b) {
     fetch(`/setColor?r=${r}&g=${g}&b=${b}`)
@@ -70,7 +75,7 @@ function hslToRgb(h, s, l) {
     if (s === 0) {
         r = g = b = l;
     } else {
-        function hue2rgb(p, q, t) {
+        const hue2rgb = (p, q, t) => {
             if (t < 0) t += 1;
             if (t > 1) t -= 1;
             if (t < 1/6) return p + (q - p) * 6 * t;
@@ -91,13 +96,29 @@ function hslToRgb(h, s, l) {
     };
 }
 
+function interpolateColors(color1, color2, factor) {
+    return {
+        r: Math.round(color1.r + (color2.r - color1.r) * factor),
+        g: Math.round(color1.g + (color2.g - color1.g) * factor),
+        b: Math.round(color1.b + (color2.b - color1.b) * factor)
+    };
+}
+
 function startColorCycle() {
-    let hue = 0;
+    let step = 0;
     relaxationInterval = setInterval(() => {
-        const color = hslToRgb(hue/360, 1, 0.5);
-        setColor(color.r, color.g, color.b);
-        hue = (hue + 1) % 360;
-    }, 50);
+        currentHue = (currentHue + 0.001) % 1;
+        const targetColor = hslToRgb(currentHue, 1, 0.5);
+        
+        const interpolatedColor = interpolateColors(lastColor, targetColor, step / TRANSITION_STEPS);
+        setColor(interpolatedColor.r, interpolatedColor.g, interpolatedColor.b);
+        
+        step++;
+        if (step >= TRANSITION_STEPS) {
+            step = 0;
+            lastColor = targetColor;
+        }
+    }, CYCLE_SPEED / TRANSITION_STEPS);
 }
 
 function stopColorCycle() {
