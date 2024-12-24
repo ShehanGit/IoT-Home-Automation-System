@@ -25,7 +25,7 @@ class ColorSync:
     def get_average_screen_color(self):
         with mss.mss() as sct:
             # Capture the second monitor (change to 1 if you're using primary monitor)
-            monitor = sct.monitors[2]
+            monitor = sct.monitors[1]
             screenshot = sct.grab(monitor)
             img = np.array(screenshot)[::4, ::4]
             return np.mean(img, axis=(0, 1))[:3]
