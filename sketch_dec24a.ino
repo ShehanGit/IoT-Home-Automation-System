@@ -1,12 +1,17 @@
-#include "Config.h" // Include the relay configuration macros
+#include "Config.h" 
 #include <WebServer.h>
 #include "WebPage.h"
+#include "SinricProConfig.h"
+#include <SinricPro.h>
+#include <SinricProSwitch.h>
 
 void setup() {
     setupSerial();
     setupRGBLED();
     setupDHT();  
     setupWiFi();
+    setupSinricPro();
+
 
     // Initialize relay pins
     pinMode(RELAY1_PIN, OUTPUT);
@@ -25,6 +30,7 @@ void setup() {
 
 void loop() {
     handleWebServer();
+    SinricPro.handle();
     handleSerialCommands();
     cycleColors();
 }
