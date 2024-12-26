@@ -9,259 +9,173 @@ const char index_html[] PROGMEM = R"rawliteral(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            text-align: center;
+            font-family: 'Arial', sans-serif;
             margin: 0;
-            padding: 20px;
-            background: #f0f2f5;
+            padding: 0;
+            background: #f4f4f9;
             color: #333;
+            text-align: center;
+        }
+        header {
+            background: #4CAF50;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
         }
         .container {
-            max-width: 600px;
-            margin: auto;
-            background: white;
+            max-width: 800px;
+            margin: 20px auto;
             padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         h2 {
-            color: #34495e;
-            margin-top: 30px;
+            color: #4CAF50;
+            margin-bottom: 10px;
         }
-        .color-picker {
-            width: 200px;
-            height: 50px;
-            margin: 20px auto;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
+        .section {
+            margin-bottom: 30px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
         }
         .btn {
             padding: 10px 20px;
-            margin: 5px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s, transform 0.2s;
         }
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        .red { background-color: #ff0000; color: white; }
-        .green { background-color: #00ff00; }
-        .blue { background-color: #0000ff; color: white; }
-        .relax-btn {
-            background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
+        .btn.on {
+            background: #4CAF50;
             color: white;
-            padding: 15px 30px;
-            font-size: 18px;
-            margin: 20px;
-            background-size: 200% 200%;
-            animation: gradient 5s ease infinite;
         }
-        @keyframes gradient {
-            0% {background-position: 0% 50%;}
-            50% {background-position: 100% 50%;}
-            100% {background-position: 0% 50%;}
+        .btn.off {
+            background: #f44336;
+            color: white;
         }
-
-        /* New sensor display styling */
-        .sensor-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 30px;
+        .color-picker {
+            margin: 20px auto;
+            width: 200px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
         }
         .sensor-card {
-            background: white;
+            display: inline-block;
+            margin: 10px;
             padding: 20px;
+            width: 150px;
+            background: #f9f9f9;
             border-radius: 10px;
-            min-width: 150px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .sensor-card:hover {
-            transform: translateY(-5px);
-        }
-        .sensor-icon {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #3498db;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
         .sensor-value {
             font-size: 24px;
             font-weight: bold;
-            color: #2c3e50;
-            margin: 10px 0;
+            color: #333;
         }
         .sensor-label {
-            color: #7f8c8d;
+            margin-top: 5px;
+            color: #555;
             font-size: 14px;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .value-update {
-            animation: pulse 0.5s ease;
         }
     </style>
     <script>
-        let relaxationMode = false;
-        let relaxationInterval;
-        let currentHue = 0;
-        let lastColor = { r: 0, g: 0, b: 0 };
-        const TRANSITION_STEPS = 30;
-        const CYCLE_SPEED = 100;
-
-        function setColor(r, g, b) {
-            fetch(/setColor?r=${r}&g=${g}&b=${b})
-                .then(response => console.log('Color set'));
+        // Control relay
+        function controlRelay(relay, state) {
+            fetch(`/relay?relay=${relay}&state=${state}`)
+                .then(response => response.text())
+                .catch(error => console.error('Error:', error));
         }
 
+        // Set RGB LED color
+        function setColor(r, g, b) {
+            fetch(`/setColor?r=${r}&g=${g}&b=${b}`)
+                .then(response => console.log('Color set'))
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Handle color picker change
         function handleColorPicker(event) {
             const color = event.target.value;
-            const r = parseInt(color.substr(1,2), 16);
-            const g = parseInt(color.substr(3,2), 16);
-            const b = parseInt(color.substr(5,2), 16);
+            const r = parseInt(color.substr(1, 2), 16);
+            const g = parseInt(color.substr(3, 2), 16);
+            const b = parseInt(color.substr(5, 2), 16);
             setColor(r, g, b);
         }
 
-        function hslToRgb(h, s, l) {
-            let r, g, b;
-            if (s === 0) {
-                r = g = b = l;
-            } else {
-                const hue2rgb = (p, q, t) => {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1/6) return p + (q - p) * 6 * t;
-                    if (t < 1/2) return q;
-                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                    return p;
-                }
-                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                const p = 2 * l - q;
-                r = hue2rgb(p, q, h + 1/3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1/3);
-            }
-            return {
-                r: Math.round(r * 255),
-                g: Math.round(g * 255),
-                b: Math.round(b * 255)
-            };
-        }
-
-        function interpolateColors(color1, color2, factor) {
-            return {
-                r: Math.round(color1.r + (color2.r - color1.r) * factor),
-                g: Math.round(color1.g + (color2.g - color1.g) * factor),
-                b: Math.round(color1.b + (color2.b - color1.b) * factor)
-            };
-        }
-
-        function startColorCycle() {
-            let step = 0;
-            relaxationInterval = setInterval(() => {
-                currentHue = (currentHue + 0.001) % 1;
-                const targetColor = hslToRgb(currentHue, 1, 0.5);
-                
-                const interpolatedColor = interpolateColors(lastColor, targetColor, step / TRANSITION_STEPS);
-                setColor(interpolatedColor.r, interpolatedColor.g, interpolatedColor.b);
-                
-                step++;
-                if (step >= TRANSITION_STEPS) {
-                    step = 0;
-                    lastColor = targetColor;
-                }
-            }, CYCLE_SPEED / TRANSITION_STEPS);
-        }
-
-        function stopColorCycle() {
-            clearInterval(relaxationInterval);
-        }
-
-        function toggleRelaxation() {
-            relaxationMode = !relaxationMode;
-            const btn = document.getElementById('relaxBtn');
-            
-            if (relaxationMode) {
-                btn.textContent = 'Stop Relaxation Mode';
-                btn.classList.add('active');
-                startColorCycle();
-            } else {
-                btn.textContent = 'Start Relaxation Mode';
-                btn.classList.remove('active');
-                stopColorCycle();
-            }
-            
-            fetch('/toggleRelax?enabled=' + relaxationMode)
-                .then(response => console.log('Relaxation mode:', relaxationMode));
-        }
-
-        // New sensor update function
+        // Fetch and update sensor data
         function updateSensorData() {
             fetch('/getSensorData')
                 .then(response => response.json())
                 .then(data => {
-                    const tempElement = document.getElementById('temperature');
-                    const humElement = document.getElementById('humidity');
-                    
-                    // Add pulse animation
-                    tempElement.classList.add('value-update');
-                    humElement.classList.add('value-update');
-                    
-                    tempElement.textContent = data.temperature.toFixed(1);
-                    humElement.textContent = data.humidity.toFixed(1);
-                    
-                    // Remove animation class after animation completes
-                    setTimeout(() => {
-                        tempElement.classList.remove('value-update');
-                        humElement.classList.remove('value-update');
-                    }, 500);
-                });
+                    document.getElementById('temperature').textContent = data.temperature.toFixed(1) + '°C';
+                    document.getElementById('humidity').textContent = data.humidity.toFixed(1) + '%';
+                })
+                .catch(error => console.error('Error:', error));
         }
 
-        // Start sensor updates when page loads
-        window.onload = function() {
+        // Periodic updates for sensor data
+        window.onload = function () {
             updateSensorData();
-            setInterval(updateSensorData, 2000);
+            setInterval(updateSensorData, 2000); // Update every 2 seconds
         }
     </script>
 </head>
 <body>
-    <h1>ESP32 Control Panel</h1>
-    
+    <header>
+        ESP32 Control Panel
+    </header>
     <div class="container">
-        <h2>RGB LED Control</h2>
-        <input type="color" class="color-picker" onchange="handleColorPicker(event)">
-        <div>
-            <button class="btn red" onclick="setColor(255,0,0)">Red</button>
-            <button class="btn green" onclick="setColor(0,255,0)">Green</button>
-            <button class="btn blue" onclick="setColor(0,0,255)">Blue</button>
-        </div>
-        <div>
-            <button id="relaxBtn" class="btn relax-btn" onclick="toggleRelaxation()">
-                Start Relaxation Mode
-            </button>
+
+        <!-- Relay Control Section -->
+        <div class="section">
+            <h2>Relay Control</h2>
+            <div class="btn-group">
+                <button class="btn on" onclick="controlRelay(1, 'on')">Relay 1 ON</button>
+                <button class="btn off" onclick="controlRelay(1, 'off')">Relay 1 OFF</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn on" onclick="controlRelay(2, 'on')">Relay 2 ON</button>
+                <button class="btn off" onclick="controlRelay(2, 'off')">Relay 2 OFF</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn on" onclick="controlRelay(3, 'on')">Relay 3 ON</button>
+                <button class="btn off" onclick="controlRelay(3, 'off')">Relay 3 OFF</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn on" onclick="controlRelay(4, 'on')">Relay 4 ON</button>
+                <button class="btn off" onclick="controlRelay(4, 'off')">Relay 4 OFF</button>
+            </div>
         </div>
 
-        <div class="sensor-container">
+        <!-- RGB LED Control Section -->
+        <div class="section">
+            <h2>RGB LED Control</h2>
+            <input type="color" class="color-picker" onchange="handleColorPicker(event)">
+        </div>
+
+        <!-- Sensor Data Section -->
+        <div class="section">
+            <h2>Sensor Data</h2>
             <div class="sensor-card">
-
-                <div class="sensor-value"><span id="temperature">--</span>°C</div>
+                <div class="sensor-value" id="temperature">--°C</div>
                 <div class="sensor-label">Temperature</div>
             </div>
             <div class="sensor-card">
-
-                <div class="sensor-value"><span id="humidity">--</span>%</div>
+                <div class="sensor-value" id="humidity">--%</div>
                 <div class="sensor-label">Humidity</div>
             </div>
         </div>
