@@ -8,140 +8,243 @@ const char index_html[] PROGMEM = R"rawliteral(
     <title>ESP32 Control Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-       /* Previous styles remain the same */
-       body {
-    font-family: Arial;
-    text-align: center;
-    margin: 0;
-    padding: 20px;
-}
-.container {
-    max-width: 600px;
-    margin: auto;
-}
-.color-picker {
-    width: 200px;
-    height: 50px;
-    margin: 20px auto;
-}
-.btn {
-    padding: 10px 20px;
-    margin: 5px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-.red { background-color: #ff0000; color: white; }
-.green { background-color: #00ff00; }
-.blue { background-color: #0000ff; color: white; }
-.relax-btn {
-    background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
-    color: white;
-    padding: 15px 30px;
-    font-size: 18px;
-    margin: 20px;
-    background-size: 200% 200%;
-    animation: gradient 5s ease infinite;
-}
-@keyframes gradient {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
-}
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        .color-picker {
+            width: 200px;
+            height: 50px;
+            margin: 20px auto;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .red { background-color: #ff0000; color: white; }
+        .green { background-color: #00ff00; }
+        .blue { background-color: #0000ff; color: white; }
+        .relax-btn {
+            background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 20px;
+            background-size: 200% 200%;
+            animation: gradient 5s ease infinite;
+        }
+        @keyframes gradient {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+
+        /* New sensor display styling */
+        .sensor-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .sensor-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 150px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .sensor-card:hover {
+            transform: translateY(-5px);
+        }
+        .sensor-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+        .sensor-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        .sensor-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .value-update {
+            animation: pulse 0.5s ease;
+        }
     </style>
     <script>
-let relaxationMode = false;
-let relaxationInterval;
-let currentHue = 0;
-let lastColor = { r: 0, g: 0, b: 0 };
-const TRANSITION_STEPS = 30;  // Number of steps for smooth transition
-const CYCLE_SPEED = 100;     // Time between color updates in milliseconds
+        let relaxationMode = false;
+        let relaxationInterval;
+        let currentHue = 0;
+        let lastColor = { r: 0, g: 0, b: 0 };
+        const TRANSITION_STEPS = 30;
+        const CYCLE_SPEED = 100;
 
-function setColor(r, g, b) {
-    fetch(`/setColor?r=${r}&g=${g}&b=${b}`)
-        .then(response => console.log('Color set'));
-}
-
-function handleColorPicker(event) {
-    const color = event.target.value;
-    const r = parseInt(color.substr(1,2), 16);
-    const g = parseInt(color.substr(3,2), 16);
-    const b = parseInt(color.substr(5,2), 16);
-    setColor(r, g, b);
-}
-
-function hslToRgb(h, s, l) {
-    let r, g, b;
-    if (s === 0) {
-        r = g = b = l;
-    } else {
-        const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1/6) return p + (q - p) * 6 * t;
-            if (t < 1/2) return q;
-            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-            return p;
+        function setColor(r, g, b) {
+            fetch(`/setColor?r=${r}&g=${g}&b=${b}`)
+                .then(response => console.log('Color set'));
         }
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-    }
-    return {
-        r: Math.round(r * 255),
-        g: Math.round(g * 255),
-        b: Math.round(b * 255)
-    };
-}
 
-function interpolateColors(color1, color2, factor) {
-    return {
-        r: Math.round(color1.r + (color2.r - color1.r) * factor),
-        g: Math.round(color1.g + (color2.g - color1.g) * factor),
-        b: Math.round(color1.b + (color2.b - color1.b) * factor)
-    };
-}
-
-function startColorCycle() {
-    let step = 0;
-    relaxationInterval = setInterval(() => {
-        currentHue = (currentHue + 0.001) % 1;
-        const targetColor = hslToRgb(currentHue, 1, 0.5);
-        
-        const interpolatedColor = interpolateColors(lastColor, targetColor, step / TRANSITION_STEPS);
-        setColor(interpolatedColor.r, interpolatedColor.g, interpolatedColor.b);
-        
-        step++;
-        if (step >= TRANSITION_STEPS) {
-            step = 0;
-            lastColor = targetColor;
+        function handleColorPicker(event) {
+            const color = event.target.value;
+            const r = parseInt(color.substr(1,2), 16);
+            const g = parseInt(color.substr(3,2), 16);
+            const b = parseInt(color.substr(5,2), 16);
+            setColor(r, g, b);
         }
-    }, CYCLE_SPEED / TRANSITION_STEPS);
-}
 
-function stopColorCycle() {
-    clearInterval(relaxationInterval);
-}
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                }
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return {
+                r: Math.round(r * 255),
+                g: Math.round(g * 255),
+                b: Math.round(b * 255)
+            };
+        }
 
-function toggleRelaxation() {
-    relaxationMode = !relaxationMode;
-    const btn = document.getElementById('relaxBtn');
-    
-    if (relaxationMode) {
-        btn.textContent = 'Stop Relaxation Mode';
-        btn.classList.add('active');
-        startColorCycle();
-    } else {
-        btn.textContent = 'Start Relaxation Mode';
-        btn.classList.remove('active');
-        stopColorCycle();
+        function interpolateColors(color1, color2, factor) {
+            return {
+                r: Math.round(color1.r + (color2.r - color1.r) * factor),
+                g: Math.round(color1.g + (color2.g - color1.g) * factor),
+                b: Math.round(color1.b + (color2.b - color1.b) * factor)
+            };
+        }
+
+        function startColorCycle() {
+            let step = 0;
+            relaxationInterval = setInterval(() => {
+                currentHue = (currentHue + 0.001) % 1;
+                const targetColor = hslToRgb(currentHue, 1, 0.5);
+                
+                const interpolatedColor = interpolateColors(lastColor, targetColor, step / TRANSITION_STEPS);
+                setColor(interpolatedColor.r, interpolatedColor.g, interpolatedColor.b);
+                
+                step++;
+                if (step >= TRANSITION_STEPS) {
+                    step = 0;
+                    lastColor = targetColor;
+                }
+            }, CYCLE_SPEED / TRANSITION_STEPS);
+        }
+
+        function stopColorCycle() {
+            clearInterval(relaxationInterval);
+        }
+
+        function toggleRelaxation() {
+            relaxationMode = !relaxationMode;
+            const btn = document.getElementById('relaxBtn');
+            
+            if (relaxationMode) {
+                btn.textContent = 'Stop Relaxation Mode';
+                btn.classList.add('active');
+                startColorCycle();
+            } else {
+                btn.textContent = 'Start Relaxation Mode';
+                btn.classList.remove('active');
+                stopColorCycle();
+            }
+            
+            fetch('/toggleRelax?enabled=' + relaxationMode)
+                .then(response => console.log('Relaxation mode:', relaxationMode));
+        }
+
+        <script>
+    function updateSensorData() {
+        fetch('/getSensorData')
+            .then(response => response.json())
+            .then(data => {
+                const tempElement    = document.getElementById('temperature');
+                const humElement     = document.getElementById('humidity');
+                const hrElement      = document.getElementById('heartRate');
+                const spo2Element    = document.getElementById('spo2');
+                
+                // Add pulse animation
+                tempElement.classList.add('value-update');
+                humElement.classList.add('value-update');
+                hrElement.classList.add('value-update');
+                spo2Element.classList.add('value-update');
+
+                // Update textual values
+                tempElement.textContent = data.temperature.toFixed(1);
+                humElement.textContent  = data.humidity.toFixed(1);
+                hrElement.textContent   = data.heartRate.toFixed(1);
+                spo2Element.textContent = data.spo2.toFixed(1);
+
+                // Remove animation after it completes
+                setTimeout(() => {
+                    tempElement.classList.remove('value-update');
+                    humElement.classList.remove('value-update');
+                    hrElement.classList.remove('value-update');
+                    spo2Element.classList.remove('value-update');
+                }, 500);
+            });
     }
-    
-    fetch('/toggleRelax?enabled=' + relaxationMode)
-        .then(response => console.log('Relaxation mode:', relaxationMode));
-}
+
+
+
+        // Start sensor updates when page loads
+        window.onload = function() {
+            updateSensorData();
+            setInterval(updateSensorData, 2000);
+        }
     </script>
 </head>
 <body>
@@ -160,6 +263,30 @@ function toggleRelaxation() {
                 Start Relaxation Mode
             </button>
         </div>
+
+        <div class="sensor-container">
+    <!-- Existing Temp and Humidity cards -->
+    <div class="sensor-card">
+        <div class="sensor-value"><span id="temperature">--</span>°C</div>
+        <div class="sensor-label">Temperature</div>
+    </div>
+    <div class="sensor-card">
+        <div class="sensor-value"><span id="humidity">--</span>%</div>
+        <div class="sensor-label">Humidity</div>
+    </div>
+    
+    <!-- New Heart Rate and SpO2 cards -->
+    <div class="sensor-card">
+        <div class="sensor-value"><span id="heartRate">--</span>bpm</div>
+        <div class="sensor-label">Heart Rate</div>
+    </div>
+    <div class="sensor-card">
+        <div class="sensor-value"><span id="spo2">--</span>%</div>
+        <div class="sensor-label">SpO2</div>
+    </div>
+</div>
+
+
     </div>
 </body>
 </html>

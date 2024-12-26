@@ -26,8 +26,25 @@ class ColorSync:
         with mss.mss() as sct:
             # Capture the second monitor (change to 1 if you're using primary monitor)
             monitor = sct.monitors[1]
-            screenshot = sct.grab(monitor)
+            
+            # Calculate the height of 1/6 of the screen
+            section_height = monitor['height'] // 6
+            
+            # Define the region to capture (full width, but only bottom 1/6 height)
+            monitor_region = {
+                'left': monitor['left'],
+                'top': monitor['top'] + monitor['height'] - section_height,
+                'width': monitor['width'],
+                'height': section_height
+            }
+            
+            # Capture only the bottom section
+            screenshot = sct.grab(monitor_region)
+            
+            # Convert to numpy array and downsample
             img = np.array(screenshot)[::4, ::4]
+            
+            # Calculate average color
             return np.mean(img, axis=(0, 1))[:3]
 
     def enhance_colors(self, r, g, b):
