@@ -121,7 +121,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         const CYCLE_SPEED = 100;
 
         function setColor(r, g, b) {
-            fetch(`/setColor?r=${r}&g=${g}&b=${b}`)
+            fetch(/setColor?r=${r}&g=${g}&b=${b})
                 .then(response => console.log('Color set'));
         }
 
@@ -206,39 +206,28 @@ const char index_html[] PROGMEM = R"rawliteral(
                 .then(response => console.log('Relaxation mode:', relaxationMode));
         }
 
-        <script>
-    function updateSensorData() {
-        fetch('/getSensorData')
-            .then(response => response.json())
-            .then(data => {
-                const tempElement    = document.getElementById('temperature');
-                const humElement     = document.getElementById('humidity');
-                const hrElement      = document.getElementById('heartRate');
-                const spo2Element    = document.getElementById('spo2');
-                
-                // Add pulse animation
-                tempElement.classList.add('value-update');
-                humElement.classList.add('value-update');
-                hrElement.classList.add('value-update');
-                spo2Element.classList.add('value-update');
-
-                // Update textual values
-                tempElement.textContent = data.temperature.toFixed(1);
-                humElement.textContent  = data.humidity.toFixed(1);
-                hrElement.textContent   = data.heartRate.toFixed(1);
-                spo2Element.textContent = data.spo2.toFixed(1);
-
-                // Remove animation after it completes
-                setTimeout(() => {
-                    tempElement.classList.remove('value-update');
-                    humElement.classList.remove('value-update');
-                    hrElement.classList.remove('value-update');
-                    spo2Element.classList.remove('value-update');
-                }, 500);
-            });
-    }
-
-
+        // New sensor update function
+        function updateSensorData() {
+            fetch('/getSensorData')
+                .then(response => response.json())
+                .then(data => {
+                    const tempElement = document.getElementById('temperature');
+                    const humElement = document.getElementById('humidity');
+                    
+                    // Add pulse animation
+                    tempElement.classList.add('value-update');
+                    humElement.classList.add('value-update');
+                    
+                    tempElement.textContent = data.temperature.toFixed(1);
+                    humElement.textContent = data.humidity.toFixed(1);
+                    
+                    // Remove animation class after animation completes
+                    setTimeout(() => {
+                        tempElement.classList.remove('value-update');
+                        humElement.classList.remove('value-update');
+                    }, 500);
+                });
+        }
 
         // Start sensor updates when page loads
         window.onload = function() {
@@ -265,28 +254,17 @@ const char index_html[] PROGMEM = R"rawliteral(
         </div>
 
         <div class="sensor-container">
-    <!-- Existing Temp and Humidity cards -->
-    <div class="sensor-card">
-        <div class="sensor-value"><span id="temperature">--</span>°C</div>
-        <div class="sensor-label">Temperature</div>
-    </div>
-    <div class="sensor-card">
-        <div class="sensor-value"><span id="humidity">--</span>%</div>
-        <div class="sensor-label">Humidity</div>
-    </div>
-    
-    <!-- New Heart Rate and SpO2 cards -->
-    <div class="sensor-card">
-        <div class="sensor-value"><span id="heartRate">--</span>bpm</div>
-        <div class="sensor-label">Heart Rate</div>
-    </div>
-    <div class="sensor-card">
-        <div class="sensor-value"><span id="spo2">--</span>%</div>
-        <div class="sensor-label">SpO2</div>
-    </div>
-</div>
+            <div class="sensor-card">
 
+                <div class="sensor-value"><span id="temperature">--</span>°C</div>
+                <div class="sensor-label">Temperature</div>
+            </div>
+            <div class="sensor-card">
 
+                <div class="sensor-value"><span id="humidity">--</span>%</div>
+                <div class="sensor-label">Humidity</div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
